@@ -1,0 +1,613 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+struct _card{
+  int suit; //integer from 1 to 4
+  int number; //integer from 1 to 13
+};
+
+typedef struct _card card;
+
+int deal(card * handOne, card * handTwo, card * handThree, card * handFour);
+int shuffle(card * theDeck);
+
+void printdeck(card * theDeck);
+int gameplay(card * handOne, card * handTwo, card * handThree, card * handFour);
+int turn(card * theHand, int * hasPassed, card * play1, card * play2, int reset, int handNum);
+
+void sorthand(card * theHand);
+int inHand(card * theMove, card * theHand);
+int removeOldCards(card * theHand, card * thePlay);
+int playcmp(card * const play1, card * const play2, int counter, int * hasPassed);
+int validCards(card * play2);
+
+int main(int argc, char * argv[]) {
+
+  srand(time(0));
+
+  //command line arguments and parsing, only blank or -r for rules works
+  if(argc == 2) {
+    if(strcmp(argv[1], "-r") == 0) {
+      
+      // File opening code resources found at www.cs.utah.edu/~germain/
+      // PPS/Topics/C_language/file_IO.html
+      
+      char character;
+      
+      FILE * rules_file = fopen("rules.txt", "r");
+      
+      if(!rules_file) {
+      	printf("Could not find rules file.\n");
+      	return -1;
+        }
+      
+        while(fscanf(rules_file, "%c", &character) == 1) {
+      	printf("%c", character);
+         }
+      
+        fclose(rules_file);
+      
+      return 0; //Ends the rule book path
+    }
+    else {
+      printf("Please input only ./tienlen -r for the rules or only ./tienlen to play\n");
+      return -1;
+    }
+  }
+  if(argc != 1) {
+    printf("Please input only the ./command to start or the ./command -r for the rules.\n");
+    return -1;
+  }
+
+  //player hands to hold their cards
+  card handOne[13];
+  card handTwo[13];
+  card handThree[13];
+  card handFour[13];
+  
+  int err = deal(handOne, handTwo, handThree, handFour);
+  if(err != 0) {
+    printf("Error dealing!\n");
+    return -1;
+  }
+
+  sorthand(handOne);
+  sorthand(handTwo);
+  sorthand(handThree);
+  sorthand(handFour);
+
+  printf("  Hand One :");
+  printdeck(handOne);
+  printf("\n  Hand Two :");
+  printdeck(handTwo);
+  printf("\nHand Three :");
+  printdeck(handThree);
+  printf("\n Hand Four :");
+  printdeck(handFour);
+  printf("\n");
+
+  card thePlay[13];
+  int hasPlayed = 0;
+
+  gameplay(handOne, handTwo, handThree, handFour);
+
+
+  return 0;
+}
+
+ /**************************************************************************************************
+            Dealing Function
+ **************************************************************************************************/
+int deal(card * handOne, card * handTwo, card * handThree, card * handFour) {
+  card theDeck[52];
+  
+  int s = 0;
+  int n = 0;
+  for(int i = 0; i < 52; i++) {
+    theDeck[i].suit = s;
+    theDeck[i].number = n;
+    n++;
+    if(n > 12) {
+      n = 0;
+      s++;
+    }
+  }
+
+  int err = shuffle(theDeck);
+
+  int p = 0;
+  for(int i = 0; i < 52; i += 4) {
+    handOne[p] = theDeck[i];
+    handTwo[p] = theDeck[i+1];
+    handThree[p] = theDeck[i+2];
+    handFour[p] = theDeck[i+3];
+    p++;
+  }
+    
+  return 0;
+}
+/**************************************************************************************************
+            Shuffling Function
+ **************************************************************************************************/
+int shuffle(card * theDeck) {
+  card shuffledDeck[52]; //empty array to store the shuffle
+
+  //sets all suits of shuffle cards 5 to begin with so we can tell which have been filled
+  for(int s = 0; s < 52; s++) { 
+    shuffledDeck[s].suit = 5;
+  }
+
+  //goes through all cards, using random number generator, to find one with a 5 for a suit value
+  //and then replace that cards values with the next value from the original deck
+  //if it does not find a 5 suit it makes a new random number and tries again til no more 5 suits
+  //exist.
+  int z = 0;
+  for(int s = 0; s < 52; s++) {
+    int randNum;
+    while(1){ //random num loop that stays with one card its whole run
+      randNum = rand() % 52;
+      
+      if(shuffledDeck[randNum].suit == 5) {
+	shuffledDeck[randNum].suit = theDeck[z].suit;
+	shuffledDeck[randNum].number = theDeck[z].number;
+	z = z + 1;
+	break; //goes to next card with successful assignment
+      }
+    }
+  }
+
+  //copies the shuffled deck back over the original deck to be used in deal function
+  for(int i = 0; i < 52; i++) {
+    theDeck[i].number = shuffledDeck[i].number;
+    theDeck[i].suit = shuffledDeck[i].suit;
+  }
+  
+  return 0;
+}
+/**************************************************************************************************
+            Deck Printing Function
+ **************************************************************************************************/
+void printdeck(card * theDeck) {
+
+  //takes the 0 - 13 ints and translates them to 3 - 10 / J - 2 for printing
+  for(int i = 0; i < 13; i++) {
+    if(theDeck[i].number < 8)
+      printf(" %d", theDeck[i].number + 3);
+    else if(theDeck[i].number == 8)
+      printf(" %c", 'J');
+    else if(theDeck[i].number == 9)
+      printf(" %c", 'Q');
+    else if(theDeck[i].number == 10)
+      printf(" %c", 'K');
+    else if(theDeck[i].number == 11)
+      printf(" %c", 'A');
+    else if(theDeck[i].number == 12)
+      printf(" %d", 2);
+    else
+      printf(" %c", '_');
+
+    if(theDeck[i].suit == 0)
+      printf("%c ", 'S');
+    else if(theDeck[i].suit == 1)
+      printf("%c ", 'C');
+    else if(theDeck[i].suit == 2)
+      printf("%c ", 'D');
+    else if(theDeck[i].suit == 3)
+      printf("%c ", 'H');
+    else
+      printf("%c ", '_');
+  }
+  
+}
+/**************************************************************************************************
+           Sorting Function
+ **************************************************************************************************/
+void sorthand(card * theHand) {
+
+  card sortedHand[13];
+  
+  card smallest;
+  int smallestI = 0;
+  smallest.number = theHand[0].number;
+  smallest.suit = theHand[0].suit;
+
+  for(int j = 0; j < 13; j++) {
+
+    for(int i = 0; i < 13; i++) {
+      if(theHand[i].number == smallest.number) {
+	if(theHand[i].suit < smallest.suit) {
+	  smallest.number = theHand[i].number;
+	  smallest.suit = theHand[i].suit;
+	  smallestI = i;
+	}
+      }
+      if(theHand[i].number < smallest.number) {
+	smallest.number = theHand[i].number;
+	smallest.suit = theHand[i].suit;
+	smallestI = i;
+      }
+    }
+
+    theHand[smallestI].number = 15; //takes this card out of the search for smallest
+    theHand[smallestI].suit = 5;
+    
+    sortedHand[j] = smallest;
+    smallest.number = 15;
+    smallest.suit = 5;
+
+  }
+
+  for(int i = 0; i < 13; i++) {
+    theHand[i].number = sortedHand[i].number;
+    theHand[i].suit = sortedHand[i].suit;
+  }
+	
+}
+/**************************************************************************************************
+           Card in Hand Function
+ **************************************************************************************************/
+int inHand(card * theMove, card * theHand) {
+
+  int count = 0;
+  int count2 = 0;
+  
+  while(theMove[count].suit != 5) {
+    count++;
+  }
+  
+  for(int z = 0; z < count; z++) {
+    for(int i = 0; i < 13; i++) {
+      if(theMove[z].number  == theHand[i].number && theMove[z].suit == theHand[i].suit)
+	count2++;
+    }
+  }
+
+  if(count2 + 1 == count)
+    return 1;
+  
+  //fails to find move card in deck
+  return 0;
+    
+  
+}
+/**************************************************************************************************
+           Gameplay Function
+ **************************************************************************************************/
+int gameplay(card * handOne, card * handTwo, card * handThree, card * handFour) {
+
+  int hasPassed1 = 0;
+  int hasPassed2 = 0;
+  int hasPassed3 = 0;
+  int hasPassed4 = 0;
+  int reset = 0;
+  int counter = 0;
+  int validPlay = 0;
+  
+  card thePlay1[13];
+  card thePlay2[13];
+
+  for(int i = 0; i < 13; i++) {
+    thePlay1[i].number = 15;
+    thePlay1[i].suit = 5;
+  }
+
+  while(1) {
+
+    if(!hasPassed1 && hasPassed2 && hasPassed3 && hasPassed4) {
+      reset = 1;
+      hasPassed2 = 0;
+      hasPassed3 = 0;
+      hasPassed4 = 0;
+    }
+    if(!hasPassed1) {
+      
+      turn(handOne, &hasPassed1, thePlay1, thePlay2,  reset, 1);
+      validPlay = playcmp(thePlay1, thePlay2, counter, &hasPassed1);
+      while(!validPlay) {
+	turn(handOne, &hasPassed1, thePlay1, thePlay2,  reset, 1);
+	validPlay = playcmp(thePlay1, thePlay2, counter, &hasPassed1);
+      }
+    }
+    reset = 0;
+    if(validPlay && !hasPassed1) {
+      changePrevPlay(thePlay1, thePlay2);
+      removeOldCards(handOne, thePlay1);
+    }
+    counter = counter + 1;
+    
+    if(!hasPassed2 && hasPassed1 && hasPassed3 && hasPassed4) {
+      reset = 1;
+      hasPassed1 = 0;
+      hasPassed3 = 0;
+      hasPassed4 = 0;
+    }
+    if(!hasPassed2) {
+      turn(handTwo, &hasPassed2, thePlay1, thePlay2,  reset, 2);
+      validPlay = playcmp(thePlay1, thePlay2, counter, &hasPassed2);
+      while(!validPlay) {
+	turn(handOne, &hasPassed2, thePlay1, thePlay2,  reset, 2);
+	validPlay = playcmp(thePlay1, thePlay2, counter, &hasPassed2);
+      }
+    }
+    reset = 0;
+    if(validPlay && !hasPassed2) {
+      changePrevPlay(thePlay1, thePlay2);
+      removeOldCards(handTwo, thePlay1);
+    }
+    
+    if(!hasPassed3 && hasPassed2 && hasPassed1 && hasPassed4) {
+      reset = 1;
+      hasPassed1 = 0;
+      hasPassed2 = 0;
+      hasPassed4 = 0;
+    }
+    if(!hasPassed3) {
+      turn(handThree, &hasPassed3, thePlay1, thePlay2,  reset, 3);
+      validPlay = playcmp(thePlay1, thePlay2, counter, &hasPassed3);
+      while(!validPlay) {
+	turn(handThree, &hasPassed3, thePlay1, thePlay2,  reset, 3);
+	validPlay = playcmp(thePlay1, thePlay2, counter, &hasPassed3);
+      }
+    }
+    reset = 0;
+    if(validPlay && !hasPassed3) {
+      changePrevPlay(thePlay1, thePlay2);
+      removeOldCards(handThree, thePlay1);
+    }
+    
+    if(!hasPassed4 && hasPassed2 && hasPassed3 && hasPassed1) {
+      reset = 1;
+      hasPassed1 = 0;
+      hasPassed2 = 0;
+      hasPassed3 = 0;
+    }
+    if(!hasPassed4) {
+      turn(handFour, &hasPassed4, thePlay1, thePlay2,  reset, 4);
+      validPlay = playcmp(thePlay1, thePlay2, counter, &hasPassed4);
+      while(!validPlay) {
+	turn(handFour, &hasPassed4, thePlay1, thePlay2,  reset, 4);
+	validPlay = playcmp(thePlay1, thePlay2, counter, &hasPassed4);
+      }
+    }
+    reset = 0;
+    if(validPlay && !hasPassed4) {
+      changePrevPlay(thePlay1, thePlay2);
+      removeOldCards(handFour, thePlay1);
+    }
+    
+    counter++;
+  }
+}
+/**************************************************************************************************
+           Turn Function
+ **************************************************************************************************/
+int turn(card * theHand, int * hasPassed, card * play1, card * play2, int reset, int handNum) {
+  
+  if(!reset) {
+    for(int i = 0; i < 20; i++)
+      printf("\n");
+    printf("\nPrevious Play :\n");
+    printdeck(play1);
+  }
+  else {
+    for(int i = 0; i < 20; i++)
+      printf("\n");
+    printf("\nReset! Play any valid combination of cards you want.\n");
+  }
+
+  printf("\n\nPlayer %d's Hand :\n", handNum);
+  printdeck(theHand);
+  printf("\n");
+  for(int i = 0; i < 10; i++)
+    printf("\n");
+  getUserInput(play1, play2, hasPassed);
+  while(inHand(play2, theHand)) {
+    printf("You don't have those cards, try again.\n");
+    printf("\nPrevious Play :\n");
+    printdeck(play1);
+    printf("\n\nPlayer %d's Hand :\n", handNum);
+    printdeck(theHand);
+    printf("\n");
+    getUserInput(play1, play2, hasPassed);
+  }
+
+  return 0;
+}
+/**************************************************************************************************
+           User Input Function
+ **************************************************************************************************/
+int getUserInput(card * play1, card * play2, int * hasPassed) {
+
+  //empties array to hold user input
+  for(int i = 0; i < 13; i++) {
+    play2[i].number = 15;
+    play2[i].suit = 5;
+  }
+
+  int r = 0;
+  
+  //MAYBE USE REALLOC INSTEAD OF A 50 BIG ARRAY
+  char userInput[50];
+  while(scanf("%c", &userInput[r]) != EOF) {
+    r++;
+  }
+  if(userInput[0] == 'p' && userInput[1] == 'a' && userInput[2] == 's' && userInput[3] == 's') {
+    *hasPassed = 1;
+    return 0;
+  }
+
+  int z = 0;
+  for(int i = 0; i < r; i++) {
+    if(userInput[i] == '3') {
+      play2[z].number = 0;
+      z = z + 1;
+    }
+    else if(userInput[i] == '4') {
+      play2[z].number = 1;
+      z = z + 1;
+    }
+    else if(userInput[i] == '5') {
+      play2[z].number = 2;
+      z = z + 1;
+    }
+    else if(userInput[i] == '6') {
+      play2[z].number = 3;
+      z = z + 1;
+    }
+    else if(userInput[i] == '7') {
+      play2[z].number = 4;
+      z = z + 1;
+    }
+    else if(userInput[i] == '8') {
+      play2[z].number = 5;
+      z = z + 1;
+    }
+    else if(userInput[i] == '9') {
+      play2[z].number = 6;
+      z = z + 1;
+    }
+    else if(userInput[i] == '1') {
+      play2[z].number = 7;
+      z = z + 1;
+    }
+    else if(userInput[i] == 'J') {
+      play2[z].number = 8;
+      z = z + 1;
+    }
+    else if(userInput[i] == 'Q') {
+      play2[z].number = 9;
+      z = z + 1;
+    }
+    else if(userInput[i] == 'K') {
+      play2[z].number = 10;
+      z = z + 1;
+    }
+    else if(userInput[i] == 'A') {
+      play2[z].number = 11;
+      z = z + 1;
+    }
+    else if(userInput[i] == '2') {
+	play2[z].number = 12;
+	z = z + 1;
+    }
+
+  }
+
+  z = 0;
+  for(int i = 0; i < r; i++) {
+    if(userInput[i] == 'S') {
+      play2[z].suit = 0;
+      z = z + 1;
+    }
+    if(userInput[i] == 'C') {
+      play2[z].suit = 1;
+      z = z + 1;
+    }
+    if(userInput[i] == 'D') {
+      play2[z].suit = 2;
+      z = z + 1;
+    }
+    if(userInput[i] == 'H') {
+      play2[z].suit = 3;
+      z = z + 1;
+    }
+  }
+  
+  return 0;
+}
+/**************************************************************************************************
+           Old Card Removal Function
+ **************************************************************************************************/
+int removeOldCards(card * theHand, card * thePlay) {
+  //gets rid of cards that the player has used
+  for(int z = 0; z < 4; z++) {
+    for(int i = 0; i < 13; i++) {
+      if(thePlay[z].number == theHand[i].number && thePlay[z].suit == theHand[i].suit) {
+	theHand[i].number = 15;
+	theHand[i].suit = 5;
+      }
+    }
+  }
+
+  return 0;
+}
+/**************************************************************************************************
+           Play Compare Function
+ **************************************************************************************************/
+int playcmp(card * const play1, card * const play2, int counter, int * hasPassed) {
+
+  int sizeOfPlay1 = 0;
+  int sizeOfPlay2 = 0;
+
+  if(hasPassed)
+    return 1;
+  
+  for(int i = 0; i < 13; i++) {
+    if(play1[i].suit != 5)
+      sizeOfPlay1++;
+    if(play2[i].suit != 5)
+      sizeOfPlay2++;
+  }
+
+  if(counter == 0) {
+    if(sizeOfPlay1 == 1) {
+      if(play2[0].number == 0 && play2[0].suit == 0)
+	return 1;
+      else {
+	printf("You can only play the 3S or things added to it to start. Try again.\n");
+	return 0;
+      }
+    }
+  }
+  else if(sizeOfPlay2 != sizeOfPlay1) {
+    printf("You can only play the same number of cards as the person before you did. Try again.\n");
+    return 0;
+  }
+  else if(sizeOfPlay1 == 1) {
+    if(play1[0].number == play2[0].number) {
+      if(play1[0].suit < play2[0].suit)
+	return 1;
+      else
+	return 0;
+    }
+    else if(play1[0].number < play2[0].number)
+      return 1;
+  }
+
+  int c = 0;
+  if(sizeOfPlay1 == 2) {
+    for(int i = 0; i < 2; i++) {
+      if(play1[0].number == play2[0].number)
+	c++;
+    }
+    if(c == sizeOfPlay1)
+      return 1;
+    else
+      return 0;
+  }
+  
+}
+
+void changePrevPlay(card * play1, card * play2) {
+  
+    for(int i = 0; i < 13; i++) {
+      play1[i].number = play2[i].number;
+      play1[i].suit = play2[i].suit;
+    }
+    
+}
+
+int validCards(card * play2) {
+
+  for(int i = 0; i < 13; i++) {
+    if(play2[i].suit != 5)
+      sizeOfPlay2++;
+  }
+
+  if(sizeOfPlay == 0) {
+    printf("Type pass to pass.\n");
+    return 1;
+  }
+  if(sizeOfPlay == 1) {
+  

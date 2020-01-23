@@ -1,0 +1,46 @@
+The game begins with dealing 13 cards into 4 piles
+
+The cards are ranked 3 4 5 6 7 8 9 10 J K Q A 2
+The suits are ranked Spade Club Diamond Heart
+
+The objective of the game is to get rid of all of 
+	your cards before anyone else
+
+The player who has the lowest card in the game (three 
+	of spades) goes first and can play any combination 
+	as long as it contains the three of spades
+
+After the three of spades is played by player 1 player 2 goes
+
+Combinations:
+
+Singles - single card, can be beaten by a card of a 
+	  higher value or a card of the same value 
+          with a higher ranked suit
+
+Double - two of the same value, can be beaten by a 
+	 pair of a higher value or a pair of the 
+         same value with one higher ranked suit
+
+Triple - three of the same value, can only be 
+	 beaten by a triple of higher value
+
+Run - combination of at least three cards that  
+      are in numerical order (2s cannot be included in runs)
+
+Breakers (can beat a 2 if the player has not passed yet)
+
+	4 of a kind
+	A run of pairs (33, 44, 55)
+
+A player can pass if they wish to but then they will 
+	not get to play until the turn is reset
+
+If no one can beat the cards that were played 
+	then the last person who played gets to reset 
+	(change what is being played to anything they want)
+
+If a player cannot play they automatically pass
+
+^^^^^SCROLL TO TOP TO SEE RULES FROM BEGINNING^^^^^^
+             type ./tienlen to play
